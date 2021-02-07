@@ -2,10 +2,31 @@
 # Django
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect
+from django.views.generic import DetailView
+from django.urls import reverse
 
+#Models
+from django.contrib.auth.models import User
+from posts.models import Post
 #Forms
 from users.forms import ProfileForm, SignupForm
+
+class UserDetailView(LoginRequiredMixin,DetailView):
+    template_view='users/detail.html'
+    slug_field='username'
+    slug_url_kwarg='username'
+    queryset=User.objects.all()
+    context_object_name='user'
+    
+    def get_context_data(self,**kwargs):
+        """añador posts al contexto"""
+        context=super().get_context_data(**kwargs)
+        user=self.get_object()
+        context['posts']=Post.objects.filter(user=user).order_by('-created')
+        return context
+
 
 def login_view(request):
     if request.method=='POST':
@@ -46,7 +67,8 @@ def update_profile(request):
             profile.biography=data['biography']
             profile.picture=data['picture']
             profile.save()
-            return redirect('update_profile')
+            url=reverse('detail',kwargs={'username':request.user.username})
+            return redirect(url)
     else:
         form=ProfileForm()
     profile = request.user.profile
